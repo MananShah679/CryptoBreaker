@@ -19,9 +19,21 @@
     --error: #ff453a;
     --info: #0a84ff;
 
+    .hidden {
+        display: none !important;
+    }
+
     /* Typography */
-    --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    --font-family: -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Display',
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+    --font-mono: 'SF Mono',
+    'Fira Code',
+    'Consolas',
+    monospace;
 
     /* Spacing */
     --spacing-xs: 4px;

@@ -317,13 +317,25 @@ function selectCategory(category) {
     });
 
     // Show/hide cipher groups
-    elements.substitutionCiphers.classList.toggle('hidden', category !== 'substitution');
-    elements.transpositionCiphers.classList.toggle('hidden', category !== 'transposition');
-    elements.productCiphers.classList.toggle('hidden', category !== 'product');
-    if (elements.symmetricCiphers) elements.symmetricCiphers.classList.toggle('hidden', category !== 'symmetric');
-    if (elements.asymmetricCiphers) elements.asymmetricCiphers.classList.toggle('hidden', category !== 'asymmetric');
-    if (elements.hashingCiphers) elements.hashingCiphers.classList.toggle('hidden', category !== 'hashing');
-    if (elements.mathTools) elements.mathTools.classList.toggle('hidden', category !== 'math');
+    const groups = [
+        { el: elements.substitutionCiphers, cat: 'substitution' },
+        { el: elements.transpositionCiphers, cat: 'transposition' },
+        { el: elements.productCiphers, cat: 'product' },
+        { el: elements.symmetricCiphers, cat: 'symmetric' },
+        { el: elements.asymmetricCiphers, cat: 'asymmetric' },
+        { el: elements.hashingCiphers, cat: 'hashing' },
+        { el: elements.mathTools, cat: 'math' }
+    ];
+
+    groups.forEach(group => {
+        if (group.el) {
+            if (group.cat === category) {
+                group.el.classList.remove('hidden');
+            } else {
+                group.el.classList.add('hidden');
+            }
+        }
+    });
 
     // Select first cipher in category
     let firstCipher;
