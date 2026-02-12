@@ -6,6 +6,8 @@
 import { CryptoEngine } from './lib/crypto.js';
 import { Analyzer } from './lib/analyzer.js';
 import { ModernCrypto } from './lib/modern.js';
+import { MerkleTree } from './lib/merkle.js';
+import { MerkleTree } from './lib/merkle.js';
 import './style.css';
 
 // ==================== STATE ====================
@@ -26,6 +28,7 @@ const elements = {
     productCiphers: document.getElementById('product-ciphers'),
     symmetricCiphers: document.getElementById('symmetric-ciphers'),
     asymmetricCiphers: document.getElementById('asymmetric-ciphers'),
+    hashingCiphers: document.getElementById('hashing-ciphers'),
     mathTools: document.getElementById('math-tools'),
 
     // Product cipher dropdowns
@@ -319,6 +322,7 @@ function selectCategory(category) {
     elements.productCiphers.classList.toggle('hidden', category !== 'product');
     if (elements.symmetricCiphers) elements.symmetricCiphers.classList.toggle('hidden', category !== 'symmetric');
     if (elements.asymmetricCiphers) elements.asymmetricCiphers.classList.toggle('hidden', category !== 'asymmetric');
+    if (elements.hashingCiphers) elements.hashingCiphers.classList.toggle('hidden', category !== 'hashing');
     if (elements.mathTools) elements.mathTools.classList.toggle('hidden', category !== 'math');
 
     // Select first cipher in category
@@ -327,6 +331,7 @@ function selectCategory(category) {
     else if (category === 'transposition') firstCipher = 'simple-trans';
     else if (category === 'symmetric') firstCipher = 'des';
     else if (category === 'asymmetric') firstCipher = 'rsa';
+    else if (category === 'hashing') firstCipher = 'merkle';
     else if (category === 'math') firstCipher = 'euler-phi';
     else firstCipher = 'product';
 
@@ -525,6 +530,14 @@ function updateKeyInputs() {
             html += '</div>';
             break;
         }
+        case 'merkle':
+            html = `
+                <div class="merkle-inputs">
+                    <p class="key-hint">Enter transactions (one per line) to build the Merkle Tree.</p>
+                </div>
+            `;
+            // We use the main plaintext input for transactions
+            break;
     }
 
     elements.keyInputs.innerHTML = html;
@@ -618,6 +631,130 @@ function executeEncrypt() {
     }
 
     let ciphertext;
+
+    if (state.cipherType === 'merkle') {
+        // Merkle Tree Logic
+        const transactions = plaintext.split('\n').map(t => t.trim()).filter(t => t);
+        if (transactions.length === 0) {
+            hideLoading();
+            alert('Please enter at least one transaction');
+            return;
+        }
+
+        MerkleTree.buildMerkleTree(transactions).then(tree => {
+            // Visualize Tree
+            let html = '<div class="merkle-tree">';
+
+            tree.levels.forEach((level, levelIndex) => {
+                html += '<div class="merkle-level">';
+                level.forEach((hash, nodeIndex) => {
+                    const isRoot = levelIndex === tree.levels.length - 1;
+                    const isLeaf = levelIndex === 0;
+                    const classes = `merkle-node ${isRoot ? 'root' : ''} ${isLeaf ? 'leaf' : ''}`;
+                    const title = isRoot ? 'Merkle Root' : isLeaf ? `Leaf ${nodeIndex}\nSHA256(SHA256(Tx))` : 'Internal Node';
+                    html += `<div class="${classes}" title="${title}">${hash.substring(0, 16)}...</div>`;
+                });
+                html += '</div>';
+            });
+            html += '</div>';
+
+            // Proof Verification Section
+            html += `
+                <div class="merkle-proof-section">
+                    <h3>Merkle Proof Verification</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 15px;">
+                        <input type="number" id="proof-index" placeholder="Tx Index (0-${transactions.length - 1})" min="0" max="${transactions.length - 1}" style="width: 150px;">
+                        <button class="btn-small" id="verify-merkle-btn">Generate & Verify Proof</button>
+                    </div>
+                    <div id="proof-result"></div>
+                </div>
+            `;
+
+            // Steps
+            html += '<div class="merkle-steps"><h3>Construction Steps</h3>';
+            tree.steps.forEach(step => {
+                html += `
+                    <div class="merkle-step">
+                        <div class="merkle-step-header">
+                            <span>${step.step}</span>
+                        </div>
+                        <div class="merkle-step-desc">${step.description}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            elements.cipherResult.innerHTML = html;
+            elements.encryptionOutput.querySelector('h3').textContent = 'Merkle Tree Visualization';
+
+            // Store tree for proof verification
+            window.currentMerkleTree = tree;
+
+            // Attach event listener for verification
+            const verifyBtn = document.getElementById('verify-merkle-btn');
+            if (verifyBtn) {
+                verifyBtn.addEventListener('click', async () => {
+                    const indexInput = document.getElementById('proof-index');
+                    const resultDiv = document.getElementById('proof-result');
+                    const index = parseInt(indexInput.value);
+
+                    if (isNaN(index) || index < 0 || index >= transactions.length) {
+                        alert(`Invalid index. Must be between 0 and ${transactions.length - 1}`);
+                        return;
+                    }
+
+                    // Get Proof
+                    const proofData = MerkleTree.getMerkleProof(tree, index);
+                    if (!proofData.valid && proofData.error) {
+                        alert(proofData.error);
+                        return;
+                    }
+
+                    // Verify
+                    const verification = await MerkleTree.verifyMerkleProof(proofData.leafHash, proofData.proof, tree.root);
+
+                    // Display Result
+                    let resHtml = `
+                        <div style="margin-top: 10px; padding: 10px; border-radius: 8px; background: ${verification.valid ? 'rgba(48, 209, 88, 0.1)' : 'rgba(255, 69, 58, 0.1)'}; border: 1px solid ${verification.valid ? 'var(--success)' : 'var(--error)'}">
+                            <div style="font-weight: 600; color: ${verification.valid ? 'var(--success)' : 'var(--error)'}; margin-bottom: 5px;">
+                                ${verification.valid ? '✓ PROOF VALID' : '✕ PROOF INVALID'}
+                            </div>
+                            <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 5px;">
+                                Leaf: ${proofData.leafHash.substring(0, 16)}...<br>
+                                Root: ${verification.computedRoot.substring(0, 16)}...
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px;">
+                                <strong>Verification Path:</strong>
+                                <ul style="list-style-type: none; padding-left: 0; margin-top: 5px;">
+                    `;
+
+                    verification.steps.forEach((step, i) => {
+                        resHtml += `
+                            <li style="margin-bottom: 4px; padding-left: 10px; border-left: 2px solid var(--border);">
+                                Step ${i + 1}: H(${step.left}... + ${step.right}...) -> ${step.result}...
+                            </li>
+                        `;
+                    });
+
+                    resHtml += `
+                                </ul>
+                            </div>
+                        </div>
+                    `;
+
+                    resultDiv.innerHTML = resHtml;
+                });
+            }
+
+            hideLoading();
+        }).catch(err => {
+            console.error(err);
+            hideLoading();
+            alert('Error building Merkle Tree');
+        });
+
+        return null; // Async handled above
+    }
 
     switch (state.cipherType) {
         case 'additive': {
