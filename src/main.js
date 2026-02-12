@@ -142,10 +142,15 @@ function init() {
     loadSavedTheme();
 
     // Initialize
+    console.log('Initializing CryptoBreaker...');
     updateKeyInputs();
     updateOperations();
     initDragAndDrop();
     initHistory();
+    console.log('Initialization complete.');
+
+    // Force selection of first category to ensure UI state
+    // selectCategory('substitution');
 }
 
 // ==================== HISTORY MANAGEMENT ====================
@@ -1766,4 +1771,8 @@ function loadSavedTheme() {
 }
 
 // ==================== START APP ====================
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
