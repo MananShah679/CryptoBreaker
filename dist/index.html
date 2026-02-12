@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="Brute-force cryptanalysis tool for classical substitution ciphers - Additive, Multiplicative, and Affine">
+    <title>CRYPTOBREAKER | Classical Cipher Cryptanalysis</title>
+  <script type="module" crossorigin src="/assets/index-D-zFl6nB.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-h6kSlOqh.css">
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>CRYPTO<span>BREAKER</span></h1>
+            <p class="subtitle">// Brute-force cryptanalysis for classical ciphers</p>
+        </header>
+
+        <!-- Theme Toggle -->
+        <div class="theme-toggle-container">
+            <button class="theme-toggle" id="theme-toggle">
+                <span class="theme-icon" id="theme-icon">LIGHT MODE</span>
+            </button>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel-full">
+            <!-- Category Selection -->
+            <div class="control-card">
+                <h3>Cipher Category</h3>
+                <div class="category-selector">
+                    <button class="category-btn active" data-category="substitution">Substitution</button>
+                    <button class="category-btn" data-category="transposition">Transposition</button>
+                    <button class="category-btn" data-category="product">Product</button>
+                    <button class="category-btn" data-category="symmetric">Symmetric Block</button>
+                    <button class="category-btn" data-category="asymmetric">Asymmetric</button>
+                    <button class="category-btn" data-category="math">Math Tools</button>
+                </div>
+            </div>
+
+            <!-- Cipher Selection -->
+            <div class="control-card">
+                <h3>Select Cipher</h3>
+                <div class="cipher-selector" id="substitution-ciphers">
+                    <button class="cipher-btn active" data-cipher="additive">Additive (Caesar)</button>
+                    <button class="cipher-btn" data-cipher="multiplicative">Multiplicative</button>
+                    <button class="cipher-btn" data-cipher="affine">Affine</button>
+                    <button class="cipher-btn" data-cipher="monoalphabetic">Monoalphabetic</button>
+                    <button class="cipher-btn" data-cipher="vigenere">Vigenere</button>
+                    <button class="cipher-btn" data-cipher="autokey">Autokey</button>
+                    <button class="cipher-btn" data-cipher="playfair">Playfair</button>
+                    <button class="cipher-btn" data-cipher="hill">Hill (2x2)</button>
+                    <button class="cipher-btn" data-cipher="vernam">Vernam (OTP)</button>
+                </div>
+                <div class="cipher-selector hidden" id="transposition-ciphers">
+                    <button class="cipher-btn" data-cipher="simple-trans">Simple (Keyless)</button>
+                    <button class="cipher-btn" data-cipher="railfence">Rail Fence</button>
+                    <button class="cipher-btn" data-cipher="columnar">Columnar</button>
+                    <button class="cipher-btn" data-cipher="double">Double Transposition</button>
+                </div>
+                <div class="cipher-selector hidden" id="product-ciphers">
+                    <div class="product-selectors">
+                        <div class="product-step">
+                            <label>Step 1: Substitution</label>
+                            <select id="product-sub-cipher">
+                                <option value="additive">Additive (Caesar)</option>
+                                <option value="multiplicative">Multiplicative</option>
+                                <option value="affine">Affine</option>
+                                <option value="vigenere" selected>Vigenere</option>
+                                <option value="playfair">Playfair</option>
+                                <option value="hill">Hill (2x2)</option>
+                            </select>
+                        </div>
+                        <div class="product-arrow">→</div>
+                        <div class="product-step">
+                            <label>Step 2: Transposition</label>
+                            <select id="product-trans-cipher">
+                                <option value="railfence">Rail Fence</option>
+                                <option value="columnar" selected>Columnar</option>
+                                <option value="double">Double Transposition</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- Modern Symmetric Ciphers -->
+                <div class="cipher-selector hidden" id="symmetric-ciphers">
+                    <button class="cipher-btn" data-cipher="des">DES (Demo)</button>
+                    <button class="cipher-btn" data-cipher="aes">AES (Demo)</button>
+                </div>
+                <!-- Asymmetric Ciphers -->
+                <div class="cipher-selector hidden" id="asymmetric-ciphers">
+                    <button class="cipher-btn" data-cipher="rsa">RSA</button>
+                </div>
+                <!-- Math Tools -->
+                <div class="cipher-selector hidden" id="math-tools">
+                    <button class="cipher-btn" data-cipher="euler-phi">Euler's φ(n)</button>
+                    <button class="cipher-btn" data-cipher="ext-gcd">Extended GCD</button>
+                    <button class="cipher-btn" data-cipher="mod-inverse">Modular Inverse</button>
+                    <button class="cipher-btn" data-cipher="mod-exp">Modular Exponentiation</button>
+                </div>
+            </div>
+
+            <!-- Operation Mode (Multi-Select) -->
+            <div class="control-card">
+                <h3>Operations (Select Multiple)</h3>
+                <div class="mode-checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="op-encrypt" value="encrypt">
+                        <span class="checkbox-text">Encrypt</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="op-decrypt" value="decrypt">
+                        <span class="checkbox-text">Decrypt</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="op-crack" value="crack" checked>
+                        <span class="checkbox-text">Brute-Force Crack</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Load Test Cases -->
+        <div class="quick-load">
+            <h3>Quick Load Test Ciphertexts</h3>
+            <div class="quick-load-btns">
+                <button class="quick-btn" data-cipher="additive" data-text="SDVVZRUGLVVHFUHW">Additive:
+                    SDVVZRUGLVVHFUHW</button>
+                <button class="quick-btn" data-cipher="additive" data-text="WKLV LV D VHFUHW PHVVDJH">Additive: WKLV LV
+                    D...</button>
+                <button class="quick-btn" data-cipher="multiplicative" data-text="XAMMGSHPOMMUKHUR">Mult:
+                    XAMMGSHPOMMUKHUR</button>
+                <button class="quick-btn" data-cipher="affine" data-text="FIUUOAPXWUUCSPCZ">Affine:
+                    FIUUOAPXWUUCSPCZ</button>
+                <button class="quick-btn" data-cipher="vigenere" data-text="LXFOPVEFRNHR">Vigenere:
+                    LXFOPVEFRNHR</button>
+                <button class="quick-btn" data-cipher="playfair" data-text="BMODZBXDNABEKUDMUIXMMOUVIF">Playfair:
+                    BMODZBXDNA...</button>
+                <button class="quick-btn" data-cipher="railfence" data-text="WECRLTEERDSOEEFEAOCAIVDEN">RailFence:
+                    WECRLTEER...</button>
+                <button class="quick-btn" data-cipher="columnar" data-text="EVLNEACDTKESEOANREEIFDSITOC">Columnar:
+                    EVLNEACDT...</button>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="input-section">
+            <!-- Encryption Mode Inputs (hidden by default) -->
+            <div id="encrypt-inputs" class="hidden">
+                <div class="input-group">
+                    <label>Plaintext</label>
+                    <div class="drop-zone" id="plaintext-drop-zone">
+                        <textarea id="plaintext-input"
+                            placeholder="Enter plaintext or drag text file here..."></textarea>
+                        <div class="drop-overlay">Drop file to load text</div>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Encryption Key(s)</label>
+                    <div class="key-inputs" id="key-inputs">
+                        <input type="number" id="key-single" placeholder="Key (0-25)" min="0" max="25">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Crack Mode Input -->
+            <div id="crack-inputs">
+                <div class="input-group">
+                    <label>Ciphertext</label>
+                    <div class="drop-zone" id="ciphertext-drop-zone">
+                        <textarea id="ciphertext-input" placeholder="Enter ciphertext or drag file here..."></textarea>
+                        <div class="drop-overlay">Drop file to load text</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="btn-container">
+            <button class="btn btn-primary" id="execute-btn">
+                <span id="btn-text">CRACK CIPHER</span>
+            </button>
+            <div class="history-actions" style="display: flex; gap: 0.5rem;">
+                <button class="btn-small" id="export-history">Export JSON</button>
+                <button class="btn-small" id="clear-history">Clear</button>
+            </div>
+        </div>
+
+        <!-- Encryption Output (shown in encrypt mode) -->
+        <div id="encryption-output" class="encryption-output hidden">
+            <h3>Encrypted Ciphertext</h3>
+            <div class="cipher-output" id="cipher-result"></div>
+        </div>
+
+        <!-- Results Section -->
+        <section class="results-section" id="results-section">
+            <h2>Analysis Results</h2>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="empty-state">
+                <div class="empty-state-icon">[?]</div>
+                <h3>No results yet</h3>
+                <p>Enter a ciphertext and click "Crack Cipher" to begin analysis</p>
+            </div>
+
+            <!-- Loading State -->
+            <div class="loading hidden" id="loading-state">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Analyzing all possible keys...</p>
+            </div>
+
+            <!-- Top Candidates -->
+            <div class="top-candidates hidden" id="top-candidates">
+                <h3>Top Candidates</h3>
+                <div id="candidates-container"></div>
+            </div>
+
+            <!-- All Results -->
+            <div class="all-results-toggle hidden" id="all-results-toggle">
+                <button class="toggle-btn" id="toggle-all-btn">Show All Results</button>
+            </div>
+            <div class="all-results hidden" id="all-results">
+                <div id="all-results-container"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+</body>
+
+</html>
