@@ -437,10 +437,21 @@ function updateKeyInputs() {
         case 'rsa':
             html = `
                 <div class="rsa-inputs">
-                    <input type="number" id="key-p" placeholder="Prime p (e.g., 7)">
-                    <input type="number" id="key-q" placeholder="Prime q (e.g., 17)">
-                    <input type="number" id="key-e" placeholder="Public exponent e (optional)">
-                    <input type="number" id="key-m" placeholder="Message M (number)">
+                    <input type="text" id="key-p" placeholder="Prime p (e.g., 61 or paste large prime)">
+                    <input type="text" id="key-q" placeholder="Prime q (e.g., 53 or paste large prime)">
+                    <input type="text" id="key-e" placeholder="Public exponent e (default: 65537)">
+                    <input type="text" id="key-m" placeholder="Message (number or text, e.g., 65 or HELLO)">
+                    <p class="key-hint">Supports arbitrary-size primes (RSA-512 to RSA-4096). Text messages auto-convert to numbers.</p>
+                </div>
+            `;
+            break;
+        case 'rsa-perf':
+            html = `
+                <div class="rsa-inputs">
+                    <p class="key-hint">Benchmarks RSA-512, 1024, 2048, 4096 using pre-generated primes.<br>Optionally enter your own primes below:</p>
+                    <input type="text" id="key-p" placeholder="Custom prime p (optional)">
+                    <input type="text" id="key-q" placeholder="Custom prime q (optional)">
+                    <input type="text" id="key-e" placeholder="Public exponent e (default: 65537)">
                 </div>
             `;
             break;
@@ -597,7 +608,7 @@ async function execute() {
 }
 
 function executeEncrypt() {
-    const modernCiphers = ['rsa', 'des', 'aes', 'euler-phi', 'ext-gcd', 'mod-inverse', 'mod-exp'];
+    const modernCiphers = ['rsa', 'rsa-perf', 'des', 'aes', 'euler-phi', 'ext-gcd', 'mod-inverse', 'mod-exp'];
     const plaintext = CryptoEngine.cleanText(elements.plaintextInput.value);
 
     if (!plaintext && !modernCiphers.includes(state.cipherType)) {
@@ -841,37 +852,64 @@ function executeEncrypt() {
             break;
         }
         case 'rsa': {
-            const p = parseInt(document.getElementById('key-p')?.value);
-            const q = parseInt(document.getElementById('key-q')?.value);
-            const eVal = parseInt(document.getElementById('key-e')?.value) || null;
-            const m = parseInt(document.getElementById('key-m')?.value);
-            if (isNaN(p) || isNaN(q)) {
+            const pStr = document.getElementById('key-p')?.value?.trim();
+            const qStr = document.getElementById('key-q')?.value?.trim();
+            const eStr = document.getElementById('key-e')?.value?.trim();
+            const mStr = document.getElementById('key-m')?.value?.trim();
+            if (!pStr || !qStr) {
                 hideLoading();
                 alert('Please enter prime numbers p and q');
                 return;
             }
-            if (isNaN(m)) {
+            if (!mStr) {
                 hideLoading();
-                alert('Please enter a message number M');
+                alert('Please enter a message (number or text)');
                 return;
             }
             try {
+                const p = BigInt(pStr);
+                const q = BigInt(qStr);
+                const eVal = eStr ? BigInt(eStr) : null;
+                // Convert message: if it's a number, use directly; if text, convert to number
+                let m;
+                let mDisplay = mStr;
+                try {
+                    m = BigInt(mStr);
+                } catch {
+                    // Convert text to number by encoding each char
+                    let numStr = '';
+                    for (const ch of mStr) numStr += ch.charCodeAt(0).toString().padStart(3, '0');
+                    m = BigInt(numStr);
+                    mDisplay = `"${mStr}" → ${m.toString()}`;
+                }
                 const keys = ModernCrypto.rsaGenerateKeys(p, q, eVal);
                 const encrypted = ModernCrypto.rsaEncrypt(m, keys.publicKey.e, keys.publicKey.n);
                 const decrypted = ModernCrypto.rsaDecrypt(encrypted.ciphertext, keys.privateKey.d, keys.privateKey.n);
+                // Signing & Verification
+                const signed = ModernCrypto.rsaSign(m, keys.privateKey.d, keys.privateKey.n);
+                const verified = ModernCrypto.rsaVerify(signed.signature, keys.publicKey.e, keys.publicKey.n, m);
+
+                // Truncate large values for display
+                const trunc = (v, len = 60) => { const s = v.toString(); return s.length > len ? s.substring(0, len) + '...' : s; };
 
                 let stepsHtml = '<div class="modern-steps">';
-                stepsHtml += '<h4>Key Generation</h4>';
+                stepsHtml += '<h4>🔑 Key Generation</h4>';
                 keys.steps.forEach(s => {
-                    stepsHtml += `<div class="step-line"><strong>Step ${s.step}:</strong> ${s.description}<br><code>${s.formula || ''}</code> = <strong>${s.result}</strong></div>`;
+                    stepsHtml += `<div class="step-line"><strong>Step ${s.step}:</strong> ${s.description}<br><code>${s.formula || ''}</code> = <strong>${trunc(s.result)}</strong></div>`;
                 });
-                stepsHtml += `<h4>Public Key: (e=${keys.publicKey.e}, n=${keys.publicKey.n})</h4>`;
-                stepsHtml += `<h4>Private Key: (d=${keys.privateKey.d}, n=${keys.privateKey.n})</h4>`;
-                stepsHtml += '<h4>Encryption</h4>';
-                stepsHtml += `<div class="step-line">C = M<sup>e</sup> mod n = ${m}<sup>${keys.publicKey.e}</sup> mod ${keys.publicKey.n} = <strong>${encrypted.ciphertext}</strong></div>`;
-                stepsHtml += '<h4>Decryption (Verification)</h4>';
-                stepsHtml += `<div class="step-line">M = C<sup>d</sup> mod n = ${encrypted.ciphertext}<sup>${keys.privateKey.d}</sup> mod ${keys.privateKey.n} = <strong>${decrypted.plaintext}</strong></div>`;
-                stepsHtml += `<div class="step-line">✓ Original M = ${m}, Decrypted M = ${decrypted.plaintext}</div>`;
+                stepsHtml += `<h4>Public Key: (e=${trunc(keys.publicKey.e)}, n=${trunc(keys.publicKey.n)})</h4>`;
+                stepsHtml += `<h4>Private Key: (d=${trunc(keys.privateKey.d)}, n=${trunc(keys.privateKey.n)})</h4>`;
+                stepsHtml += '<h4>🔒 Encryption</h4>';
+                stepsHtml += `<div class="step-line">M = ${mDisplay}</div>`;
+                stepsHtml += `<div class="step-line">C = M<sup>e</sup> mod n = <strong>${trunc(encrypted.ciphertext)}</strong></div>`;
+                stepsHtml += '<h4>🔓 Decryption</h4>';
+                stepsHtml += `<div class="step-line">M = C<sup>d</sup> mod n = <strong>${trunc(decrypted.plaintext)}</strong></div>`;
+                stepsHtml += `<div class="step-line">${decrypted.plaintext === m ? '✅' : '❌'} Original M = ${trunc(m)}, Decrypted M = ${trunc(decrypted.plaintext)}</div>`;
+                stepsHtml += '<h4>✍️ Digital Signature</h4>';
+                stepsHtml += `<div class="step-line">S = M<sup>d</sup> mod n = <strong>${trunc(signed.signature)}</strong></div>`;
+                stepsHtml += '<h4>✔️ Signature Verification</h4>';
+                stepsHtml += `<div class="step-line">M' = S<sup>e</sup> mod n = <strong>${trunc(verified.recovered)}</strong></div>`;
+                stepsHtml += `<div class="step-line">${verified.valid ? '✅ Signature Valid' : '❌ Signature Invalid'}</div>`;
                 stepsHtml += '</div>';
 
                 elements.cipherResult.innerHTML = stepsHtml;
@@ -879,11 +917,105 @@ function executeEncrypt() {
                 elements.encryptionOutput.classList.remove('hidden');
                 elements.emptyState.classList.add('hidden');
                 hideLoading();
-                addToHistory('RSA', `M=${m}, p=${p}, q=${q}`, `C=${encrypted.ciphertext}`);
+                addToHistory('RSA', `M=${trunc(m, 30)}, p=${trunc(p, 20)}, q=${trunc(q, 20)}`, `C=${trunc(encrypted.ciphertext, 30)}`);
                 return String(encrypted.ciphertext);
             } catch (e) {
                 hideLoading();
                 alert('RSA Error: ' + e.message);
+                return;
+            }
+        }
+        case 'rsa-perf': {
+            try {
+                const pStr = document.getElementById('key-p')?.value?.trim();
+                const qStr = document.getElementById('key-q')?.value?.trim();
+                const eStr = document.getElementById('key-e')?.value?.trim();
+
+                let customResult = null;
+                if (pStr && qStr) {
+                    const p = BigInt(pStr);
+                    const q = BigInt(qStr);
+                    const e = eStr ? BigInt(eStr) : 65537n;
+                    customResult = ModernCrypto.rsaCustomBenchmark(p, q, e);
+                }
+
+                const results = ModernCrypto.rsaPerformanceBenchmark();
+
+                let html = '<div class="modern-steps">';
+                html += '<h4>⚡ RSA Performance Analysis</h4>';
+                html += '<p>Benchmarking key generation, encryption, decryption, signing, and verification across different key sizes.</p>';
+
+                // Build table
+                html += '<table class="perf-table">';
+                html += '<thead><tr><th>Key Size</th><th>Key Gen (ms)</th><th>Encrypt (ms)</th><th>Decrypt (ms)</th><th>Sign (ms)</th><th>Verify (ms)</th><th>Total (ms)</th><th>Valid</th></tr></thead>';
+                html += '<tbody>';
+
+                const allRows = customResult ? [...results, customResult] : results;
+
+                for (const r of allRows) {
+                    const t = r.timings;
+                    const total = (t.keygen >= 0 ? t.keygen : 0) + t.encrypt + t.decrypt + t.sign + t.verify;
+                    html += `<tr>`;
+                    html += `<td><strong>RSA-${r.keySize}</strong></td>`;
+                    html += `<td>${t.keygen >= 0 ? t.keygen.toFixed(2) : 'ERR'}</td>`;
+                    html += `<td>${t.encrypt.toFixed(2)}</td>`;
+                    html += `<td>${t.decrypt.toFixed(2)}</td>`;
+                    html += `<td>${t.sign.toFixed(2)}</td>`;
+                    html += `<td>${t.verify.toFixed(2)}</td>`;
+                    html += `<td><strong>${total.toFixed(2)}</strong></td>`;
+                    html += `<td>${r.valid ? '✅' : '❌'}</td>`;
+                    html += `</tr>`;
+                }
+                html += '</tbody></table>';
+
+                // Bar chart visualization
+                html += '<h4>📊 Time Comparison (Decrypt + Sign are heaviest operations)</h4>';
+                const maxTime = Math.max(...allRows.map(r => Math.max(r.timings.decrypt, r.timings.sign, r.timings.encrypt, r.timings.verify, r.timings.keygen)));
+                const operations = ['keygen', 'encrypt', 'decrypt', 'sign', 'verify'];
+                const opLabels = { keygen: 'Key Gen', encrypt: 'Encrypt', decrypt: 'Decrypt', sign: 'Sign', verify: 'Verify' };
+                const opColors = { keygen: '#6366f1', encrypt: '#10b981', decrypt: '#f59e0b', sign: '#ef4444', verify: '#8b5cf6' };
+
+                html += '<div class="perf-chart">';
+                for (const r of allRows) {
+                    html += `<div class="perf-chart-group">`;
+                    html += `<div class="perf-chart-label">RSA-${r.keySize}</div>`;
+                    html += `<div class="perf-chart-bars">`;
+                    for (const op of operations) {
+                        const w = maxTime > 0 ? (r.timings[op] / maxTime * 100) : 0;
+                        html += `<div class="perf-bar-row">`;
+                        html += `<span class="perf-bar-label">${opLabels[op]}</span>`;
+                        html += `<div class="perf-bar-track"><div class="perf-bar" style="width:${Math.max(w, 1)}%;background:${opColors[op]};"></div></div>`;
+                        html += `<span class="perf-bar-value">${r.timings[op].toFixed(2)}ms</span>`;
+                        html += `</div>`;
+                    }
+                    html += `</div></div>`;
+                }
+                html += '</div>';
+
+                // Complexity analysis
+                html += '<h4>📐 Computational Complexity</h4>';
+                html += '<table class="perf-table">';
+                html += '<thead><tr><th>Operation</th><th>Time Complexity</th><th>Notes</th></tr></thead>';
+                html += '<tbody>';
+                html += '<tr><td>Key Generation</td><td>O(1) with given primes</td><td>Modular inverse via Extended Euclidean Algorithm</td></tr>';
+                html += '<tr><td>Encryption</td><td>O(k² · log e)</td><td>k = key bits, e is small (65537), so fast</td></tr>';
+                html += '<tr><td>Decryption</td><td>O(k² · log d)</td><td>d is large (~k bits), so slow</td></tr>';
+                html += '<tr><td>Signing</td><td>O(k² · log d)</td><td>Same as decryption (uses private key)</td></tr>';
+                html += '<tr><td>Verification</td><td>O(k² · log e)</td><td>Same as encryption (uses public key)</td></tr>';
+                html += '</tbody></table>';
+
+                html += '</div>';
+
+                elements.cipherResult.innerHTML = html;
+                elements.encryptionOutput.querySelector('h3').textContent = 'RSA Performance Analysis';
+                elements.encryptionOutput.classList.remove('hidden');
+                elements.emptyState.classList.add('hidden');
+                hideLoading();
+                addToHistory('RSA-PERF', 'Benchmark RSA-512/1024/2048/4096', 'Performance analysis complete');
+                return 'RSA_PERF';
+            } catch (e) {
+                hideLoading();
+                alert('RSA Performance Error: ' + e.message);
                 return;
             }
         }

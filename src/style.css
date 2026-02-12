@@ -923,6 +923,108 @@ textarea::placeholder {
     gap: var(--spacing-sm);
 }
 
+.rsa-inputs .key-hint {
+    grid-column: 1 / -1;
+}
+
+/* ==================== PERFORMANCE TABLE & CHART ==================== */
+
+.perf-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--spacing-md) 0;
+    font-size: 0.85rem;
+}
+
+.perf-table th,
+.perf-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+
+.perf-table th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.perf-table td {
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+}
+
+.perf-table tr:hover td {
+    background: var(--accent-subtle);
+}
+
+.perf-chart {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    margin: var(--spacing-md) 0;
+}
+
+.perf-chart-group {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+}
+
+.perf-chart-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: var(--spacing-sm);
+}
+
+.perf-chart-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.perf-bar-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.perf-bar-label {
+    width: 70px;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.perf-bar-track {
+    flex: 1;
+    height: 18px;
+    background: var(--bg-tertiary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.perf-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    min-width: 2px;
+}
+
+.perf-bar-value {
+    width: 80px;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
 /* ==================== ALL RESULTS TOGGLE ==================== */
 
 .all-results-toggle {

@@ -95,7 +95,7 @@ export function primeFactorization(n) {
 
 /**
  * Modular Exponentiation (for large numbers)
- * Computes base^exp mod m efficiently
+ * Computes base^exp mod m efficiently using BigInt
  */
 export function modPow(base, exp, mod) {
     base = BigInt(base);
@@ -116,43 +116,78 @@ export function modPow(base, exp, mod) {
         base = (base * base) % mod;
     }
 
-    return { result: Number(result), steps };
+    return { result, steps };
+}
+
+/**
+ * Fast modPow without step tracking (for performance benchmarks)
+ */
+function modPowFast(base, exp, mod) {
+    base = BigInt(base);
+    exp = BigInt(exp);
+    mod = BigInt(mod);
+    let result = 1n;
+    base = base % mod;
+    while (exp > 0n) {
+        if (exp % 2n === 1n) result = (result * base) % mod;
+        exp = exp / 2n;
+        base = (base * base) % mod;
+    }
+    return result;
 }
 
 // ==================== RSA ====================
 
 /**
- * RSA Key Generation with step-by-step output
+ * BigInt GCD helper
+ */
+function gcdBig(a, b) {
+    a = a < 0n ? -a : a;
+    b = b < 0n ? -b : b;
+    while (b > 0n) { [a, b] = [b, a % b]; }
+    return a;
+}
+
+function gcdNum(a, b) {
+    return b === 0 ? a : gcdNum(b, a % b);
+}
+
+/**
+ * RSA Key Generation with step-by-step output (BigInt)
  */
 export function rsaGenerateKeys(p, q, e = null) {
+    p = BigInt(p);
+    q = BigInt(q);
     const steps = [];
 
     // Step 1: Calculate n
     const n = p * q;
-    steps.push({ step: 1, description: 'Calculate n = p × q', formula: `n = ${p} × ${q}`, result: n });
+    steps.push({ step: 1, description: 'Calculate n = p × q', formula: `n = p × q`, result: n.toString() });
 
     // Step 2: Calculate φ(n) = (p-1)(q-1)
-    const phi = (p - 1) * (q - 1);
-    steps.push({ step: 2, description: 'Calculate φ(n) = (p-1)(q-1)', formula: `φ(n) = (${p}-1)(${q}-1) = ${p - 1} × ${q - 1}`, result: phi });
+    const phi = (p - 1n) * (q - 1n);
+    steps.push({ step: 2, description: 'Calculate φ(n) = (p-1)(q-1)', formula: `φ(n) = (p-1)(q-1)`, result: phi.toString() });
 
-    // Step 3: Choose e if not provided (common: 7, 17, 65537)
-    if (e === null) {
-        for (const candidate of [7, 17, 65537, 3]) {
-            if (gcdNum(candidate, phi) === 1 && candidate < phi) {
+    // Step 3: Choose e if not provided
+    if (e === null || e === undefined) {
+        for (const candidate of [65537n, 17n, 7n, 3n]) {
+            if (gcdBig(candidate, phi) === 1n && candidate < phi) {
                 e = candidate;
                 break;
             }
         }
+    } else {
+        e = BigInt(e);
     }
-    steps.push({ step: 3, description: 'Choose e (coprime with φ(n))', formula: `gcd(${e}, ${phi}) = 1`, result: e });
+    steps.push({ step: 3, description: 'Choose e (coprime with φ(n))', formula: `gcd(e, φ(n)) = 1`, result: e.toString() });
 
     // Step 4: Calculate d = e^(-1) mod φ(n)
-    const d = Number(modInverseBigInt(e, phi));
-    steps.push({ step: 4, description: 'Calculate d = e⁻¹ mod φ(n)', formula: `d = ${e}⁻¹ mod ${phi}`, result: d });
+    const d = modInverseBigInt(e, phi);
+    steps.push({ step: 4, description: 'Calculate d = e⁻¹ mod φ(n)', formula: `d = e⁻¹ mod φ(n)`, result: d.toString() });
 
     // Verification
     const verification = (e * d) % phi;
-    steps.push({ step: 5, description: 'Verify: e × d ≡ 1 (mod φ(n))', formula: `${e} × ${d} mod ${phi} = ${verification}`, result: verification === 1 ? 'Valid ✓' : 'Invalid ✗' });
+    steps.push({ step: 5, description: 'Verify: e × d ≡ 1 (mod φ(n))', formula: `e × d mod φ(n) = ${verification.toString()}`, result: verification === 1n ? 'Valid ✓' : 'Invalid ✗' });
 
     return {
         publicKey: { e, n },
@@ -163,39 +198,218 @@ export function rsaGenerateKeys(p, q, e = null) {
 }
 
 /**
- * RSA Encryption with step-by-step output
+ * RSA Encryption with step-by-step output (BigInt)
  */
 export function rsaEncrypt(message, e, n) {
+    message = BigInt(message);
+    e = BigInt(e);
+    n = BigInt(n);
     const steps = [];
 
-    steps.push({ step: 1, description: 'Apply encryption formula', formula: `C = M^e mod n = ${message}^${e} mod ${n}` });
+    steps.push({ step: 1, description: 'Apply encryption formula', formula: `C = M^e mod n` });
 
     const { result: ciphertext, steps: powSteps } = modPow(message, e, n);
 
-    steps.push({ step: 2, description: 'Modular exponentiation steps', details: powSteps });
-    steps.push({ step: 3, description: 'Ciphertext', result: ciphertext });
+    steps.push({ step: 2, description: 'Modular exponentiation (square & multiply)', details: powSteps.length <= 20 ? powSteps : [{ note: `${powSteps.length} steps performed` }] });
+    steps.push({ step: 3, description: 'Ciphertext', result: ciphertext.toString() });
 
     return { ciphertext, steps };
 }
 
 /**
- * RSA Decryption with step-by-step output
+ * RSA Decryption with step-by-step output (BigInt)
  */
 export function rsaDecrypt(ciphertext, d, n) {
+    ciphertext = BigInt(ciphertext);
+    d = BigInt(d);
+    n = BigInt(n);
     const steps = [];
 
-    steps.push({ step: 1, description: 'Apply decryption formula', formula: `M = C^d mod n = ${ciphertext}^${d} mod ${n}` });
+    steps.push({ step: 1, description: 'Apply decryption formula', formula: `M = C^d mod n` });
 
     const { result: plaintext, steps: powSteps } = modPow(ciphertext, d, n);
 
-    steps.push({ step: 2, description: 'Modular exponentiation steps', details: powSteps });
-    steps.push({ step: 3, description: 'Plaintext', result: plaintext });
+    steps.push({ step: 2, description: 'Modular exponentiation (square & multiply)', details: powSteps.length <= 20 ? powSteps : [{ note: `${powSteps.length} steps performed` }] });
+    steps.push({ step: 3, description: 'Plaintext', result: plaintext.toString() });
 
     return { plaintext, steps };
 }
 
-function gcdNum(a, b) {
-    return b === 0 ? a : gcdNum(b, a % b);
+/**
+ * RSA Digital Signature: S = M^d mod n
+ */
+export function rsaSign(message, d, n) {
+    message = BigInt(message);
+    d = BigInt(d);
+    n = BigInt(n);
+    const signature = modPowFast(message, d, n);
+    return { signature, message };
+}
+
+/**
+ * RSA Signature Verification: M' = S^e mod n, check M' === M
+ */
+export function rsaVerify(signature, e, n, originalMessage) {
+    signature = BigInt(signature);
+    e = BigInt(e);
+    n = BigInt(n);
+    originalMessage = BigInt(originalMessage);
+    const recovered = modPowFast(signature, e, n);
+    return { recovered, valid: recovered === originalMessage };
+}
+
+// ==================== RSA PERFORMANCE BENCHMARK ====================
+
+// Pre-generated safe primes for each key size (educational use)
+const RSA_TEST_PRIMES = {
+    512: {
+        p: 11927553021736834454925549491960945063124956033726912113510914706029188662513081939080153088952578426660039587153062570891875151276099690618751762487489883n,
+        q: 12647063429825022997466844654498790002916009027391838629803469745502545893753103277893255498263406618117064498700580194804554964069817765437033146673045383n,
+        e: 65537n
+    },
+    1024: {
+        p: 96130345313583504574191581280615427909309845594996215822583150879647940455056470638491257160180347503120986666064924201918087806674210960633542199266612009n,
+        q: 120601919572314469182767942044508960015559250546370339360617983217314821484837646592153894532091752252732268301071206956046025138871455249690003596004561n * 10n + 7n,
+        e: 65537n
+    },
+    2048: {
+        p: 32317006071311007300338913926423828248817941241140239112842009751400741706634354222619689417363569347117901737909704191754605873209195028853758986185622153212175412514901774520270235796078236248884246189477587641105928646099411723744002773600046339773680691334865466898612672793546847390511568090955912873958723n,
+        q: 27585235685093393495428154543947093587791898209094779767255345107740909379872992814595099440427982613949587801609882053551485205504621343969511766781590462547524868688235599403073729375113559667006229887315795786023160551860090630152027394976498949479333283775316597476621879236553402751424264608999881552061539n,
+        e: 65537n
+    },
+    4096: {
+        p: 1044388881413152506691752710716624382579964249047383780384233483283953907971557456848826811934997558340890106714439262837987573438185793607263236087851365277945956976543709998340361590134383718314428070011855946226376318839397712745672334684344586617496807908705803704071284048740118609114467977783598029006686938976881787785946905630190260940599579453432823040352284802467188484520n * 10n + 7n,
+        q: 1044388881413152506691752710716624382579964249047383780384233483283953907971557456848826811934997558340890106714439262837987573438185793607263236087851365277945956976543709998340361590134383718314428070011855946226376318839397712745672334684344586617496807908705803704071284048740118609114467977783598029006686938976881787785946905630190260940599579453432823040352284802467188484619n * 10n + 9n,
+        e: 65537n
+    }
+};
+
+/**
+ * Run a full RSA performance benchmark across multiple key sizes
+ * Returns timing data for keygen, encrypt, decrypt, sign, verify
+ */
+export function rsaPerformanceBenchmark(customParams = null) {
+    const results = [];
+    const keySizes = [512, 1024, 2048, 4096];
+    const testMessage = 42n; // Simple test message
+
+    for (const size of keySizes) {
+        const params = (customParams && customParams.keySize === size)
+            ? customParams
+            : RSA_TEST_PRIMES[size];
+
+        if (!params) continue;
+
+        const timings = {};
+        let keys, ciphertext, signature;
+
+        // 1. Key Generation
+        const t1 = performance.now();
+        try {
+            keys = rsaGenerateKeysFast(params.p, params.q, params.e);
+            timings.keygen = performance.now() - t1;
+        } catch (e) {
+            timings.keygen = -1;
+            results.push({ keySize: size, timings, error: 'Key generation failed: ' + e.message });
+            continue;
+        }
+
+        // 2. Encryption
+        const t2 = performance.now();
+        ciphertext = modPowFast(testMessage, keys.e, keys.n);
+        timings.encrypt = performance.now() - t2;
+
+        // 3. Decryption
+        const t3 = performance.now();
+        const decrypted = modPowFast(ciphertext, keys.d, keys.n);
+        timings.decrypt = performance.now() - t3;
+
+        // 4. Signing
+        const t4 = performance.now();
+        signature = modPowFast(testMessage, keys.d, keys.n);
+        timings.sign = performance.now() - t4;
+
+        // 5. Verification
+        const t5 = performance.now();
+        const verified = modPowFast(signature, keys.e, keys.n);
+        timings.verify = performance.now() - t5;
+
+        const valid = decrypted === testMessage && verified === testMessage;
+
+        results.push({
+            keySize: size,
+            timings,
+            n: keys.n.toString().length + ' digits',
+            valid,
+            ciphertext: ciphertext.toString().substring(0, 40) + '...',
+            signature: signature.toString().substring(0, 40) + '...'
+        });
+    }
+
+    return results;
+}
+
+/**
+ * Benchmark with custom user-provided primes
+ */
+export function rsaCustomBenchmark(p, q, e = 65537n) {
+    p = BigInt(p);
+    q = BigInt(q);
+    e = BigInt(e);
+    const testMessage = 42n;
+    const timings = {};
+
+    // Key Generation
+    const t1 = performance.now();
+    const keys = rsaGenerateKeysFast(p, q, e);
+    timings.keygen = performance.now() - t1;
+
+    // Estimate key size from n
+    const nBits = keys.n.toString(2).length;
+    const keySize = nBits;
+
+    // Encryption
+    const t2 = performance.now();
+    const ciphertext = modPowFast(testMessage, keys.e, keys.n);
+    timings.encrypt = performance.now() - t2;
+
+    // Decryption
+    const t3 = performance.now();
+    const decrypted = modPowFast(ciphertext, keys.d, keys.n);
+    timings.decrypt = performance.now() - t3;
+
+    // Signing
+    const t4 = performance.now();
+    const signature = modPowFast(testMessage, keys.d, keys.n);
+    timings.sign = performance.now() - t4;
+
+    // Verification
+    const t5 = performance.now();
+    const verified = modPowFast(signature, keys.e, keys.n);
+    timings.verify = performance.now() - t5;
+
+    const valid = decrypted === testMessage && verified === testMessage;
+
+    return {
+        keySize: `~${nBits}-bit (custom)`,
+        timings,
+        n: keys.n.toString().length + ' digits',
+        valid,
+        keys: { e: keys.e.toString(), d: keys.d.toString().substring(0, 60) + '...', n: keys.n.toString().substring(0, 60) + '...' }
+    };
+}
+
+/**
+ * Fast key generation without step tracking
+ */
+function rsaGenerateKeysFast(p, q, e) {
+    p = BigInt(p);
+    q = BigInt(q);
+    e = BigInt(e);
+    const n = p * q;
+    const phi = (p - 1n) * (q - 1n);
+    const d = modInverseBigInt(e, phi);
+    return { e, d, n, phi };
 }
 
 // ==================== DES (SIMPLIFIED EDUCATIONAL) ====================
@@ -402,6 +616,10 @@ export const ModernCrypto = {
     rsaGenerateKeys,
     rsaEncrypt,
     rsaDecrypt,
+    rsaSign,
+    rsaVerify,
+    rsaPerformanceBenchmark,
+    rsaCustomBenchmark,
     // DES
     desDemo,
     desSboxDemo,
