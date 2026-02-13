@@ -7,7 +7,6 @@ import { CryptoEngine } from './lib/crypto.js';
 import { Analyzer } from './lib/analyzer.js';
 import { ModernCrypto } from './lib/modern.js';
 import { MerkleTree } from './lib/merkle.js';
-import { MerkleTree } from './lib/merkle.js';
 import './style.css';
 
 // ==================== STATE ====================
@@ -95,6 +94,20 @@ function showToast(message, type = 'info') {
 
 // Override alert for better UX
 window.alert = (msg) => showToast(msg, 'error');
+
+window.loadMerkleSample = () => {
+    const list = [
+        "T1: Alice pays Bob 2 BTC",
+        "T2: Bob pays Carol 1 BTC",
+        "T3: Carol pays Dave 0.5 BTC",
+        "T4: Dave pays Eve 0.2 BTC",
+        "T5: Eve pays Frank 0.1 BTC",
+        "T6: Frank pays Grace 0.05 BTC",
+        "T7: Grace pays Heidi 0.02 BTC",
+        "T8: Heidi pays Ivan 0.01 BTC"
+    ];
+    document.getElementById('plaintext-input').value = list.join("\n");
+};
 
 
 // ==================== INITIALIZATION ====================
@@ -551,6 +564,7 @@ function updateKeyInputs() {
             html = `
                 <div class="merkle-inputs">
                     <p class="key-hint">Enter transactions (one per line) to build the Merkle Tree.</p>
+                    <button class="btn-small" onclick="loadMerkleSample()" style="margin-top:5px;">Load Sample Transactions</button>
                 </div>
             `;
             // We use the main plaintext input for transactions
@@ -650,8 +664,9 @@ function executeEncrypt() {
     let ciphertext;
 
     if (state.cipherType === 'merkle') {
-        // Merkle Tree Logic
-        const transactions = plaintext.split('\n').map(t => t.trim()).filter(t => t);
+        // Merkle Tree — use raw text (not cleanText which strips digits/colons/periods)
+        const rawText = elements.plaintextInput.value;
+        const transactions = rawText.split('\n').map(t => t.trim()).filter(t => t);
         if (transactions.length === 0) {
             hideLoading();
             alert('Please enter at least one transaction');
@@ -702,6 +717,7 @@ function executeEncrypt() {
             html += '</div>';
 
             elements.cipherResult.innerHTML = html;
+            elements.encryptionOutput.classList.remove('hidden');
             elements.encryptionOutput.querySelector('h3').textContent = 'Merkle Tree Visualization';
 
             // Store tree for proof verification
@@ -732,29 +748,66 @@ function executeEncrypt() {
 
                     // Display Result
                     let resHtml = `
-                        <div style="margin-top: 10px; padding: 10px; border-radius: 8px; background: ${verification.valid ? 'rgba(48, 209, 88, 0.1)' : 'rgba(255, 69, 58, 0.1)'}; border: 1px solid ${verification.valid ? 'var(--success)' : 'var(--error)'}">
-                            <div style="font-weight: 600; color: ${verification.valid ? 'var(--success)' : 'var(--error)'}; margin-bottom: 5px;">
-                                ${verification.valid ? '✓ PROOF VALID' : '✕ PROOF INVALID'}
+                        <div style="margin-top: 10px; padding: 15px; border-radius: 8px; background: ${verification.valid ? 'rgba(48, 209, 88, 0.1)' : 'rgba(255, 69, 58, 0.1)'}; border: 1px solid ${verification.valid ? 'var(--success)' : 'var(--error)'}">
+                            <div style="font-weight: 600; font-size: 1.1rem; color: ${verification.valid ? 'var(--success)' : 'var(--error)'}; margin-bottom: 8px;">
+                                ${verification.valid ? '✓ PROOF VALID — Transaction is included in the Merkle Tree' : '✕ PROOF INVALID'}
                             </div>
-                            <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 5px;">
-                                Leaf: ${proofData.leafHash.substring(0, 16)}...<br>
-                                Root: ${verification.computedRoot.substring(0, 16)}...
+                            <div style="font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 10px; padding: 10px; background: rgba(0,0,0,0.15); border-radius: 6px;">
+                                <strong>Transaction:</strong> ${transactions[index]}<br>
+                                <strong>Leaf Hash:</strong> ${proofData.leafHash}<br>
+                                <strong>Merkle Root:</strong> ${verification.computedRoot}
                             </div>
-                            <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px;">
-                                <strong>Verification Path:</strong>
-                                <ul style="list-style-type: none; padding-left: 0; margin-top: 5px;">
+                            <div style="margin-top: 12px;">
+                                <strong style="font-size: 0.95rem;">Merkle Proof — Required Sibling Hashes:</strong>
+                                <table style="width: 100%; margin-top: 8px; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.78rem;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid var(--border);">
+                                            <th style="padding: 6px 8px; text-align: left;">Level</th>
+                                            <th style="padding: 6px 8px; text-align: left;">Sibling Position</th>
+                                            <th style="padding: 6px 8px; text-align: left;">Sibling Hash</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                     `;
 
-                    verification.steps.forEach((step, i) => {
+                    proofData.proof.forEach((p, i) => {
                         resHtml += `
-                            <li style="margin-bottom: 4px; padding-left: 10px; border-left: 2px solid var(--border);">
-                                Step ${i + 1}: H(${step.left}... + ${step.right}...) -> ${step.result}...
-                            </li>
+                            <tr style="border-bottom: 1px solid var(--border);">
+                                <td style="padding: 6px 8px;">Level ${p.level}</td>
+                                <td style="padding: 6px 8px;">
+                                    <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 600; background: ${p.position === 'left' ? 'rgba(52,199,89,0.2)' : 'rgba(0,122,255,0.2)'}; color: ${p.position === 'left' ? '#34c759' : '#007aff'};">
+                                        ${p.position.toUpperCase()}
+                                    </span>
+                                </td>
+                                <td style="padding: 6px 8px; word-break: break-all;">${p.hash}</td>
+                            </tr>
                         `;
                     });
 
                     resHtml += `
-                                </ul>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top: 14px;">
+                                <strong style="font-size: 0.95rem;">Verification Path (Leaf → Root):</strong>
+                                <div style="margin-top: 6px;">
+                    `;
+
+                    verification.steps.forEach((step, i) => {
+                        resHtml += `
+                            <div style="margin-bottom: 6px; padding: 8px 12px; background: rgba(0,0,0,0.1); border-radius: 6px; border-left: 3px solid var(--accent);">
+                                <div style="font-weight: 600; font-size: 0.85rem; margin-bottom: 4px;">Step ${i + 1}: ${step.operation}</div>
+                                <div style="font-family: var(--font-mono); font-size: 0.75rem;">
+                                    Left: ${step.fullLeft}<br>
+                                    Right: ${step.fullRight}<br>
+                                    → Result: ${step.result}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    resHtml += `
+                                </div>
                             </div>
                         </div>
                     `;

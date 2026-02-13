@@ -1169,6 +1169,92 @@ textarea::placeholder {
         background: var(--text-secondary);
     }
 
+
+    /* ==================== MERKLE TREE ==================== */
+
+    .merkle-tree {
+        display: flex;
+        flex-direction: column-reverse;
+        align-items: center;
+        gap: var(--spacing-lg);
+        margin: var(--spacing-lg) 0;
+        overflow-x: auto;
+        padding-bottom: var(--spacing-md);
+    }
+
+    .merkle-level {
+        display: flex;
+        justify-content: center;
+        gap: var(--spacing-md);
+    }
+
+    .merkle-node {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-family: var(--font-mono);
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        cursor: help;
+        transition: all var(--transition-fast);
+        position: relative;
+    }
+
+    .merkle-node:hover {
+        background: var(--bg-tertiary);
+        border-color: var(--accent);
+        color: var(--text-primary);
+        max-width: none;
+        z-index: 10;
+        box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    .merkle-node.root {
+        background: var(--accent-subtle);
+        border-color: var(--accent);
+        color: var(--accent);
+        font-weight: 600;
+    }
+
+    .merkle-node.leaf {
+        background: var(--bg-tertiary);
+    }
+
+    .merkle-proof-section {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-lg);
+    }
+
+    .merkle-steps {
+        margin-top: var(--spacing-lg);
+    }
+
+    .merkle-step {
+        border-left: 2px solid var(--border);
+        padding-left: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .merkle-step-header {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .merkle-step-desc {
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+
     /* ==================== RESPONSIVE ==================== */
 
     @media (max-width: 480px) {

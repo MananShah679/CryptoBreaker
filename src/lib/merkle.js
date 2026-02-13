@@ -37,6 +37,24 @@ async function doubleSha256(message) {
     return secondHash;
 }
 
+/**
+ * Concatenate two hex hashes as raw bytes and double-SHA256 the result.
+ * Bitcoin concatenates raw 32-byte buffers, NOT hex strings.
+ */
+async function doubleSha256Concat(hexA, hexB) {
+    const bytesA = new Uint8Array(hexA.match(/.{2}/g).map(b => parseInt(b, 16)));
+    const bytesB = new Uint8Array(hexB.match(/.{2}/g).map(b => parseInt(b, 16)));
+    const combined = new Uint8Array(bytesA.length + bytesB.length);
+    combined.set(bytesA, 0);
+    combined.set(bytesB, bytesA.length);
+    // First SHA-256 on raw concatenated bytes
+    const hash1 = await crypto.subtle.digest('SHA-256', combined);
+    // Second SHA-256 on the raw hash bytes
+    const hash2 = await crypto.subtle.digest('SHA-256', hash1);
+    const hashArray = Array.from(new Uint8Array(hash2));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // ==================== MERKLE TREE ====================
 
 /**
@@ -85,8 +103,7 @@ async function buildMerkleTree(transactions) {
         }
 
         for (let i = 0; i < currentLevel.length; i += 2) {
-            const combined = currentLevel[i] + currentLevel[i + 1];
-            const parentHash = await doubleSha256(combined);
+            const parentHash = await doubleSha256Concat(currentLevel[i], currentLevel[i + 1]);
             nextLevel.push(parentHash);
             levelDetails.push({
                 left: currentLevel[i].substring(0, 16) + '...',
@@ -164,25 +181,31 @@ async function verifyMerkleProof(leafHash, proof, expectedRoot) {
     const verificationSteps = [];
 
     for (const step of proof) {
-        let combined;
+        let leftHash, rightHash;
         if (step.position === 'left') {
-            combined = step.hash + currentHash;
+            leftHash = step.hash;
+            rightHash = currentHash;
             verificationSteps.push({
                 operation: `Hash(sibling || current)`,
                 left: step.hash.substring(0, 16) + '...',
                 right: currentHash.substring(0, 16) + '...',
+                fullLeft: step.hash,
+                fullRight: currentHash,
                 position: step.position
             });
         } else {
-            combined = currentHash + step.hash;
+            leftHash = currentHash;
+            rightHash = step.hash;
             verificationSteps.push({
                 operation: `Hash(current || sibling)`,
                 left: currentHash.substring(0, 16) + '...',
                 right: step.hash.substring(0, 16) + '...',
+                fullLeft: currentHash,
+                fullRight: step.hash,
                 position: step.position
             });
         }
-        currentHash = await doubleSha256(combined);
+        currentHash = await doubleSha256Concat(leftHash, rightHash);
         verificationSteps[verificationSteps.length - 1].result = currentHash.substring(0, 16) + '...';
     }
 
